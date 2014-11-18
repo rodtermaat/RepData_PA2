@@ -1,0 +1,98 @@
+---
+title: "The Ramifications of Severe Weather Events"
+author: "rod termaat"
+date: "November 16, 2014"
+output: html_document
+---
+##Synopsis:
+This report serves to answer various questions around severe weather using the NOAA Storm Database.  It will examine which events across the United Stated have the most impact on population health as well as the economic consequences.  The information presented will assist in resource allocation and prioritization planning related to future severe weather events.  
+
+##Data Processing:
+The data used is the NOAA Storm Database containing storm related information from 1950 to November 2011.  The raw data is a compressed comma delmited file.  For this report it is assumed that the data has been uncompressed and resides in the working directory of the R session used to create this report.  This is mainly due to the data being made available to us via the Coursera class website and not the onriginal location.  There are 2 supplemental documents for reference, but this report will discuss any relelvant content as it applies.  All three can be accessed from the following links.  
+[NOAA Storm Database](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2)  
+[Storm data documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)  
+[FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)  
+
+### packages
+```{r}
+library(dplyr)
+library(outliers)
+```
+
+Here we read in the data which is large
+```{r, cache=TRUE,echo=TRUE}
+dat <- read.csv("./repdata-data-StormData.csv")
+```
+
+The data contains `r nrow(dat)`  rows and `r ncol(dat)` columns.  First lets look at the column names to determine what is available.
+
+```{r, echo=TRUE}
+names(dat)
+```
+
+Columns that appear to be useful for our analysis are:    
+BGN_DATE - the date the event was recorded  
+STATE - the state  
+EVTYPE - the type of severe weather event  
+END_DATE - the date the event ended  
+FATALITIES and INJURIES - deaths and injuries attributed to the event  
+PROPDMG and CROPDMG - financial loss attributed to the event in thousands of dollars    
+
+We will examine these columns at the beginning and end of the file.  Running a summary on the columns shows us that there are no NA values in any of the columns we are interested in.  
+
+```{r echo=TRUE}
+head(dat[, c(2,7,8,23,24,25,27)])
+tail(dat[, c(2,7,8,23,24,25,27)])
+summary(dat[, c(2,7,8,23,24,25,27)])
+
+```
+
+## Results
+Here we will look at the last 20 years assuming the data is more complete and relevent to the climant we currently experience.  We should also consider by year to determine if more or less loss is occurring over time.  
+
+First select only the columns we need for the analysis.
+```{r, echo=TRUE}
+dat1 <- select(dat, BGN_DATE, STATE, EVTYPE, FATALITIES, INJURIES, PROPDMG, CROPDMG)
+dat2 <- mutate(dat1, BGN_DATE = as.Date(BGN_DATE, format = '%m/%d/%Y'))
+dat3 <- filter(dat2, BGN_DATE > '1991-11-01')  ## 20 years of data
+dat4 = as.data.frame(sapply(dat3, toupper)) 
+
+##ll <- apply(dat4,2,function(x) which(x == outlier(x)))
+##dat5 <- rm.outlier(dat4, fill = TRUE, median = TRUE, opposite = FALSE)
+```
+
+Summary by event type and sum of of fatalities/injuries and property/crop damage.  
+```{r, echo=TRUE}
+sum1 <- summarise(group_by(dat4, EVTYPE), count = n(), sum(FATALITIES), sum(INJURIES), sum(PROPDMG), sum(CROPDMG))
+names(sum1)[names(sum1)=="sum(FATALITIES)"] <- "FATALITIES"
+names(sum1)[names(sum1)=="sum(INJURIES)"] <- "INJURIES"
+names(sum1)[names(sum1)=="sum(PROPDMG)"] <- "PROPDMG"
+names(sum1)[names(sum1)=="sum(CROPDMG)"] <- "CROPDMG"
+sum1_final <- mutate(sum1, health_impact = FATALITIES + INJURIES, 
+                dollar_impact = PROPDMG + CROPDMG)
+
+sum2 <- summarise(group_by(dat4, EVTYPE), count = n(), round(mean(FATALITIES),0), 
+                  round(mean(INJURIES),0), round(mean(PROPDMG),0), round(mean(CROPDMG),0))
+names(sum2)[names(sum2)=="round(mean(FATALITIES), 0)"] <- "FATALITIES"
+names(sum2)[names(sum2)=="round(mean(INJURIES), 0)"] <- "INJURIES"
+names(sum2)[names(sum2)=="round(mean(PROPDMG), 0)"] <- "PROPDMG"
+names(sum2)[names(sum2)=="round(mean(CROPDMG), 0)"] <- "CROPDMG"
+sum2_final <- mutate(sum2, health_impact = FATALITIES + INJURIES, 
+                dollar_impact = PROPDMG + CROPDMG)
+
+```
+
+
+
+Summary by event type with average duration of the event and mean of fatalities/injuries and property/crop damage.  
+date diff:
+survey$date_diff <- as.Date(as.character(survey$date), format="%Y/%m/%d")-
+                  as.Date(as.character(survey$tx_start), format="%Y/%m/%d")
+
+
+More insight?  
+- Summary by state, event type with average duration and sum of fatalities/injuries and property/crop damage.  
+
+First we will trim the data set to those dates and column used in the subsequent analysis
+
+
